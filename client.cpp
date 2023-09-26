@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
 		// MSGGET
 
-		if (strcmp(buf, msgget.c_str()) == 10)
+		if (strcmp(buf, msgget.c_str()) == 10) // The ASCII value of the newline character (\n) is 10 in decimal notation and 0x0A in hexadecimal notation.
 		{
 			send(s, buf, len, 0);
 			recv(s, rbuf, sizeof(rbuf), 0);
@@ -139,7 +139,7 @@ int main(int argc, char *argv[])
 		// MSGSTORE message
 
 		strcpy(fbuf, buf);
-		if (strcmp(fbuf, msgstore.c_str()) == 32)
+		if (strcmp(fbuf, msgstore.c_str()) == 32) // The ASCII value of the space character (' ') is 32 in decimal notation.
 		{
 			strncpy(buf, fbuf, 9);
 

@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 
 			// Shutdown Command
 			// Description: It allows the user to shutdown the user
-			if (strcmp(buf, stdown.c_str()) == 10)
+			if (strcmp(buf, stdown.c_str()) == 10) // The ASCII value of the newline character (\n) is 10 in decimal notation and 0x0A in hexadecimal notation.
 			{
 				if (isRlogin)
 				{
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
 				isRlogin = true;
 				strcpy(buf, temp.c_str());
 			}
-			else if (strcmp(buf, login.c_str()) == 32)
+			else if (strcmp(buf, login.c_str()) == 32) // The ASCII value of the space character (' ') is 32 in decimal notation.
 			{
 				temp = "Response from Server: 410 Wrong UserID or Password\n";
 				strcpy(buf, temp.c_str());
