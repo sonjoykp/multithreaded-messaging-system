@@ -7,11 +7,48 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <algorithm>
 
 #define SERVER_PORT 9808
 #define MAX_LINE 256
 
 using namespace std;
+
+bool startsWithNoCase(const std::string &str, const std::string &prefix)
+{
+	if (str.length() < prefix.length())
+	{
+		return false; // The string is shorter than the prefix, so it can't start with it.
+	}
+
+	for (size_t i = 0; i < prefix.length(); ++i)
+	{
+		if (std::tolower(str[i]) != std::tolower(prefix[i]))
+		{
+			return false; // Characters don't match in a case-insensitive comparison.
+		}
+	}
+
+	return true;
+}
+
+bool isSameNoCase(const std::string &str1, const std::string &str2)
+{
+	if (str1.length() != str2.length())
+	{
+		return false; // If the lengths are different, the strings cannot be the same.
+	}
+
+	for (size_t i = 0; i < str1.length(); ++i)
+	{
+		if (std::tolower(str1[i]) != std::tolower(str2[i]))
+		{
+			return false; // Characters don't match in a case-insensitive comparison.
+		}
+	}
+
+	return true;
+}
 
 class Client
 {
@@ -23,25 +60,26 @@ public:
 
 private:
 	struct sockaddr_in sin;
-	char buf[MAX_LINE];
-	char fbuf[MAX_LINE];
 	char rbuf[MAX_LINE];
+
+	string inputCommand;
+	string messageToSend;
+
 	string quit = "quit";
 	string msgget = "msgget";
 	string login = "login";
 	string logout = "logout";
 	string shutdown = "shutdown";
 	string msgstore = "msgstore";
-	int len;
 	int s;
 
-	// void lowercaseInput();
-	// void handleMsgGet();
-	// void handleQuit();
-	// void handleShutdown();
-	// void handleLogout();
-	// void handleLogin();
-	// void handleMsgStore();
+	void handleMsgGet();
+	void handleQuit();
+	bool handleShutdown();
+	void handleLogout();
+	void handleLogin();
+	void handleMsgStore();
+	void sendRecievePrint();
 };
 
 Client::Client(const char *serverIP)
@@ -74,52 +112,25 @@ Client::~Client()
 	close(s);
 }
 
-// void Client::lowercaseInput() {
-//     for (int i = 0; i < MAX_LINE; i++) {
-//         buf[i] = tolower(buf[i]);
-//     }
-// }
+void Client::sendRecievePrint()
+{
+	send(s, inputCommand.c_str(), inputCommand.size() + 1, 0);
+	recv(s, rbuf, sizeof(rbuf), 0);
+	cout << rbuf << endl;
+}
 
-// void Client::handleMsgGet() {
-//     send(s, buf, strlen(buf) + 1, 0);
-//     recv(s, rbuf, sizeof(rbuf), 0);
-//     cout << rbuf << endl;
-// }
+bool Client::handleShutdown()
+{
+	sendRecievePrint();
+	// If server replies this, the client will close too
+	string temp = "Response from Server: 200 OK\n";
+	if (strcmp(rbuf, temp.c_str()) == 0)
+	{
+		return true;
+	}
 
-// void Client::handleQuit() {
-//     send(s, buf, strlen(buf) + 1, 0);
-//     recv(s, rbuf, sizeof(rbuf), 0);
-//     cout << rbuf << endl;
-// }
-
-// void Client::handleShutdown() {
-//     send(s, buf, strlen(buf) + 1, 0);
-//     recv(s, rbuf, sizeof(rbuf), 0);
-//     cout << rbuf << endl;
-//     // If server replies this, the client will close too
-//     string temp = "Response from Server: 200 OK\n";
-//     if (strcmp(rbuf, temp.c_str()) == 0) {
-//         exit(0);
-//     }
-// }
-
-// void Client::handleLogout() {
-//     send(s, buf, strlen(buf) + 1, 0);
-//     recv(s, rbuf, sizeof(rbuf), 0);
-//     cout << rbuf << endl;
-// }
-
-// void Client::handleLogin() {
-//     send(s, buf, strlen(buf) + 1, 0);
-//     recv(s, rbuf, sizeof(rbuf), 0);
-//     cout << rbuf << endl;
-// }
-
-// void Client::handleMsgStore() {
-//     send(s, buf, strlen(buf) + 1, 0);
-//     recv(s, rbuf, sizeof(rbuf), 0);
-//     cout << rbuf << endl;
-// }
+	return false;
+}
 
 void Client::run()
 {
@@ -127,89 +138,32 @@ void Client::run()
 	{
 		// User interaction at client side
 		cout << "Enter a command: ";
-		fgets(buf, sizeof(buf), stdin);
+		getline(cin, inputCommand);
+		cout << inputCommand << endl;
 
-		// Lowercases all input to unify commands
-		for (int i = 0; i < MAX_LINE; i++)
+		// MSGGET, LOGOUT, LOGIN, MSGSTORE commands
+		if (isSameNoCase(inputCommand, msgget) || 
+		    isSameNoCase(inputCommand, logout) || 
+			startsWithNoCase(inputCommand, login) || 
+			startsWithNoCase(inputCommand, msgstore))
 		{
-			buf[i] = tolower(buf[i]);
-		}
-
-		buf[MAX_LINE - 1] = '\0';
-		len = strlen(buf) + 1;
-
-		// MSGGET
-
-		if (strcmp(buf, msgget.c_str()) == 10) // The ASCII value of the newline character (\n) is 10 in decimal notation and 0x0A in hexadecimal notation.
-		{
-			send(s, buf, len, 0);
-			recv(s, rbuf, sizeof(rbuf), 0);
-			cout << rbuf << endl;
+			sendRecievePrint();
 		}
 
 		// QUIT
-
-		if (strcmp(buf, quit.c_str()) == 10)
+		if (isSameNoCase(inputCommand, quit))
 		{
-			send(s, buf, len, 0);
-			recv(s, rbuf, sizeof(rbuf), 0);
-			cout << rbuf << endl;
+			sendRecievePrint();
 			close(s);
 			break;
 		}
 
 		// SHUTDOWN
-
-		if (strcmp(buf, shutdown.c_str()) == 10)
+		if (isSameNoCase(inputCommand, shutdown))
 		{
-			send(s, buf, len, 0);
-			recv(s, rbuf, sizeof(rbuf), 0);
-			cout << rbuf << endl;
-			// If server replies this, the client will close too
-			string temp = "Response from Server: 200 OK\n";
-			if (strcmp(rbuf, temp.c_str()) == 0)
+			if (handleShutdown())
 			{
 				break;
-			}
-		}
-
-		// LOGOUT
-
-		if (strcmp(buf, logout.c_str()) == 10)
-		{
-			send(s, buf, len, 0);
-			recv(s, rbuf, sizeof(rbuf), 0);
-			cout << rbuf << endl;
-		}
-
-		// LOGIN user pass
-
-		strcpy(fbuf, buf);
-		if (strcmp(fbuf, login.c_str()) == 32)
-		{
-			strncpy(buf, fbuf, 6);
-
-			if (strcmp(buf, login.c_str()) == 32)
-			{
-
-				send(s, fbuf, len, 0);
-				recv(s, rbuf, sizeof(rbuf), 0);
-				cout << rbuf << endl;
-			}
-		}
-
-		// MSGSTORE message
-
-		strcpy(fbuf, buf);
-		if (strcmp(fbuf, msgstore.c_str()) == 32) // The ASCII value of the space character (' ') is 32 in decimal notation.
-		{
-			strncpy(buf, fbuf, 9);
-
-			if (strcmp(buf, msgstore.c_str()) == 32)
-			{
-				send(s, buf, len, 0);
-				recv(s, rbuf, sizeof(rbuf), 0);
-				cout << rbuf << endl;
 			}
 		}
 	}
