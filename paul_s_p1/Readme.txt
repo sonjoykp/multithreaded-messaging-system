@@ -11,6 +11,7 @@ How to Compile:
 2. When creating a directory, make sure it has the following files:
 	Client.cpp
 	Server.cpp
+	common.h
 	Makefile
 3. Go to the directory in terminal and type in "make" command.
 4. It should output: 
