@@ -1,15 +1,11 @@
-#include <stdio.h>
 #include <iostream>
-#include <strings.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
+#include <fstream>
 #include <cstring>
 #include <cstdlib>
-#include <fstream>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 using namespace std;
 
@@ -17,25 +13,14 @@ using namespace std;
 #define MAX_PENDING 5
 #define MAX_LINE 256
 
-// Substring method to return substring from a string
-
-void substring(char s[], char sub[], int p, int l)
+class Server
 {
-	int c = 0;
+public:
+	Server();
+	~Server();
+	void run();
 
-	while (c < l)
-	{
-		sub[c] = s[p + c - 1];
-		c++;
-	}
-	sub[c] = '\0';
-}
-
-int main(int argc, char **argv)
-{
-
-	// Variables
-
+private:
 	struct sockaddr_in sin;
 	socklen_t addrlen;
 	char buf[MAX_LINE];
@@ -64,6 +49,17 @@ int main(int argc, char **argv)
 	ifstream ifile;
 	ofstream ofile;
 
+	void substring(char s[], char sub[], int p, int l);
+	// void handleShutdown();
+	// void handleQuit();
+	// void handleMsgGet();
+	// void handleLogout();
+	// void handleLogin();
+	// void handleMsgStore();
+};
+
+Server::Server() : islogin(false), isRlogin(false), shutdown(false), itotal(0)
+{
 	// File read and store messages from
 	ifile.open("messages.txt");
 	int j = 0;
@@ -111,10 +107,85 @@ int main(int argc, char **argv)
 	addrlen = sizeof(sin);
 
 	cout << "Welcome to YAMOTD Project-1 CIS 527 Server Side" << endl;
-
 	cout << "The server is up, waiting for connection" << endl;
+}
 
-	/* wait for connection, then receive and print text */
+Server::~Server()
+{
+	close(s);
+}
+
+void Server::substring(char s[], char sub[], int p, int l)
+{
+	int c = 0;
+	while (c < l)
+	{
+		sub[c] = s[p + c - 1];
+		c++;
+	}
+	sub[c] = '\0';
+}
+
+// void Server::handleShutdown() {
+//     if (isRlogin) {
+//         shutdown = true;
+// 		buf = "Response from Server: 200 OK\n";
+//         strcpy(buf, "Response from Server: 200 OK\n");
+//     } else {
+//         strcpy(buf, "Response from Server: 402 User not allowed\n");
+//     }
+// }
+
+// void Server::handleQuit() {
+//     strcpy(buf, "Response from Server: 200 OK\n");
+// }
+
+// void Server::handleMsgGet() {
+//     buf = "Response from Server: 200 OK\n\t\t " + messages[0] + "\n";
+//     strcpy(buf, temp.c_str());
+// }
+
+// void Server::handleLogout() {
+//     buf = "Response from Server: No users logged in\n";
+//     if (isRlogin) {
+//         buf = "Response from Server: 200 OK\n";
+//         isRlogin = false;
+//     }
+//     if (islogin) {
+//         buf = "Response from Server: 200 OK\n";
+//         islogin = false;
+//     }
+// }
+
+// void Server::handleLogin() {
+//     buf = "Response from Server: 200 OK\n";
+//     islogin = true;
+
+//     strcpy(buf, temp.c_str());
+// }
+
+// void Server::handleMsgStore() {
+//     char tempb[MAX_LINE];
+//     substring(buf, tempb, 10, strlen(buf) - 10);
+//     if (islogin || isRlogin) {
+//         if (itotal < 20) {
+//             string temp(tempb);
+//             messages[itotal] = temp;
+//             ++itotal;
+//             temp = '\n' + tempb;
+//             ofile.write(temp.c_str(), strlen(tempb) + 1);
+//             temp = "Response from Server: 200 OK\n";
+//             strcpy(buf, temp.c_str());
+//         } else {
+//             strcpy(buf, "Response from Server: 402 No more space max limit exceed\n");
+//         }
+//     } else {
+//         strcpy(buf, "Response from Server: 401 You are not currently logged in, login first\n");
+//     }
+// }
+
+void Server::run()
+{
 	while (!shutdown)
 	{
 		if ((new_s = accept(s, (struct sockaddr *)&sin, &addrlen)) < 0)
@@ -246,4 +317,11 @@ int main(int argc, char **argv)
 	}
 
 	cout << "End of Project-1 Server side" << endl;
+}
+
+int main()
+{
+	Server server;
+	server.run();
+	return 0;
 }

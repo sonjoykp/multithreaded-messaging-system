@@ -1,25 +1,27 @@
-#include <stdio.h>
 #include <iostream>
-#include <strings.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <netdb.h>
-#include <cstdlib>
 #include <cstring>
-#include <string.h>
+#include <string>
+#include <cstdlib>
+#include <cstdio>
 #include <unistd.h>
-
-using namespace std;
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #define SERVER_PORT 9808
 #define MAX_LINE 256
 
-int main(int argc, char *argv[])
-{
+using namespace std;
 
-	// Variables
+class Client
+{
+public:
+	Client(const char *serverIP);
+	~Client();
+
+	void run();
+
+private:
 	struct sockaddr_in sin;
 	char buf[MAX_LINE];
 	char fbuf[MAX_LINE];
@@ -33,12 +35,17 @@ int main(int argc, char *argv[])
 	int len;
 	int s;
 
-	if (argc < 2)
-	{
-		cout << "Usage: client <Server IP Address>" << endl;
-		exit(1);
-	}
+	// void lowercaseInput();
+	// void handleMsgGet();
+	// void handleQuit();
+	// void handleShutdown();
+	// void handleLogout();
+	// void handleLogin();
+	// void handleMsgStore();
+};
 
+Client::Client(const char *serverIP)
+{
 	/* active open */
 	if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -49,7 +56,7 @@ int main(int argc, char *argv[])
 	/* build address data structure */
 	bzero((char *)&sin, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = inet_addr(argv[1]);
+	sin.sin_addr.s_addr = inet_addr(serverIP);
 	sin.sin_port = htons(SERVER_PORT);
 
 	if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0)
@@ -60,7 +67,62 @@ int main(int argc, char *argv[])
 	}
 
 	cout << "Welcome to YAMOTD Project-1 CIS 527 Client Side" << endl;
+}
 
+Client::~Client()
+{
+	close(s);
+}
+
+// void Client::lowercaseInput() {
+//     for (int i = 0; i < MAX_LINE; i++) {
+//         buf[i] = tolower(buf[i]);
+//     }
+// }
+
+// void Client::handleMsgGet() {
+//     send(s, buf, strlen(buf) + 1, 0);
+//     recv(s, rbuf, sizeof(rbuf), 0);
+//     cout << rbuf << endl;
+// }
+
+// void Client::handleQuit() {
+//     send(s, buf, strlen(buf) + 1, 0);
+//     recv(s, rbuf, sizeof(rbuf), 0);
+//     cout << rbuf << endl;
+// }
+
+// void Client::handleShutdown() {
+//     send(s, buf, strlen(buf) + 1, 0);
+//     recv(s, rbuf, sizeof(rbuf), 0);
+//     cout << rbuf << endl;
+//     // If server replies this, the client will close too
+//     string temp = "Response from Server: 200 OK\n";
+//     if (strcmp(rbuf, temp.c_str()) == 0) {
+//         exit(0);
+//     }
+// }
+
+// void Client::handleLogout() {
+//     send(s, buf, strlen(buf) + 1, 0);
+//     recv(s, rbuf, sizeof(rbuf), 0);
+//     cout << rbuf << endl;
+// }
+
+// void Client::handleLogin() {
+//     send(s, buf, strlen(buf) + 1, 0);
+//     recv(s, rbuf, sizeof(rbuf), 0);
+//     cout << rbuf << endl;
+// }
+
+// void Client::handleMsgStore() {
+//     send(s, buf, strlen(buf) + 1, 0);
+//     recv(s, rbuf, sizeof(rbuf), 0);
+//     cout << rbuf << endl;
+// }
+
+void Client::run()
+{
 	while (true)
 	{
 		// User interaction at client side
@@ -151,8 +213,20 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+}
+
+int main(int argc, char *argv[])
+{
+	if (argc < 2)
+	{
+		cerr << "Usage: client <Server IP Address>" << endl;
+		exit(1);
+	}
+
+	Client client(argv[1]);
+	client.run();
 
 	cout << "End of Project-1 Client side" << endl;
 
-	close(s);
+	return 0;
 }
