@@ -19,7 +19,6 @@ using namespace std;
 #define SERVER_PORT 5432
 #define MAX_LINE 256
 
-
 int main(int argc, char *argv[])
 {
 
