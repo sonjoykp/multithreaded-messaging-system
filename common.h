@@ -1,16 +1,21 @@
 #pragma once
 
 #include <iostream>
-#include <fstream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <pthread.h>
 #include <cstring>
 #include <cstdlib>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 
 #define SERVER_PORT 9808
 #define MAX_LINE 256
+#define STDIN 0
 
 using namespace std;
 
@@ -20,6 +25,8 @@ string login_command = "login";
 string logout_command = "logout";
 string shutdown_command = "shutdown";
 string msgstore_command = "msgstore";
+string who_command = "who";
+string send_command = "send";
 
 bool startsWithNoCase(const std::string &str, const std::string &prefix)
 {

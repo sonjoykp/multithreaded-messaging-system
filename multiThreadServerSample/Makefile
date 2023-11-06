@@ -13,8 +13,8 @@ multiThreadServer: multiThreadServer.o
 	$(CC) $(LDFLAGS1) -o multiThreadServer multiThreadServer.o
 
 # To make an object from source
-.c.o:
-	$(CC) $(CFLAGS) -c $*.c
+.cpp.o:
+	$(CC) $(CFLAGS) -c $*.cpp
 
 # clean out the dross
 clean:
