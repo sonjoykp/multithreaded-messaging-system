@@ -1,16 +1,22 @@
 CFLAGS= -g
 LDFLAGS= #-lsocket -lnsl
+LDFLAGS1= -lpthread #-lsocket -lnsl -lpthread
 CC=g++
 
-all: client server 
+all: sclient multiThreadServer
 
 # To make an executable
-client: client.o 
-	$(CC) $(LDFLAGS) -o client client.o
+sclient: sclient.o 
+	$(CC) $(LDFLAGS) -o sclient sclient.o
  
-server: server.o
-	$(CC) $(LDFLAGS) -o server server.o
+multiThreadServer: multiThreadServer.o
+	$(CC) $(LDFLAGS1) -o multiThreadServer multiThreadServer.o
+
+# To make an object from source
+.cpp.o:
+	$(CC) $(CFLAGS) -c $*.cpp
 
 # clean out the dross
 clean:
-	-rm client server *.o
+	-rm sclient multiThreadServer *.o core 
+
