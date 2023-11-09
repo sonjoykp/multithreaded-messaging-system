@@ -84,13 +84,13 @@ int main(int argc, char *argv[])
 
         if (FD_ISSET(s, &read_fds))
         {
+            int receivedbytes;
             // handle data from the server
-            if (recv(s, buf, sizeof(buf), 0) > 0)
+            if ((receivedbytes = recv(s, buf, sizeof(buf), 0)) > 0)
             {
-                cout << buf;
-                int size = sizeof(buf) / sizeof(buf); // closes and terminates the clients and server for shutdown function
-                string shutmsg = string(buf, size-1);
-                if (isSameNoCase("210 the server is about to shutdown......\n", shutmsg))
+                string messageFromServer = string(buf, receivedbytes - 1);
+                cout << messageFromServer;
+                if (isSameNoCase(shutdown_message, messageFromServer))
                 {
                     close(s);
                     exit(1);

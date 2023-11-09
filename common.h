@@ -39,6 +39,7 @@ string shutdown_command = "shutdown";
 string msgstore_command = "msgstore";
 string who_command = "who";
 string send_command = "send";
+string shutdown_message = "210 the server is about to shutdown......\n";
 
 bool startsWithNoCase(const std::string &str, const std::string &prefix)
 {
