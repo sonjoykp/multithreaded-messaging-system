@@ -1,26 +1,4 @@
-
-
-#include <iostream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <pthread.h>
-#include <cstring>
-#include <cstdlib>
-#include <fstream>
-#include <netdb.h>
-#include <string>
-#include <list>
-
-using namespace std;
-
-#define PORT 9902 // port we're listening on
-#define MAX_LINE 256
+#include "common.h"
 
 fd_set master; // master file descriptor list
 int listener;  // listening socket descriptor
@@ -251,6 +229,8 @@ void *ChildThread(void *newfd)
             }
             else
             {
+                string recievedCommand = string(buf, nbytes - 1);
+			    cout << recievedCommand << endl;
                 cout << buf;
                 if (strcmp(buf, wh.c_str()) == 10) // WHO Command Begins
                 {
@@ -602,7 +582,7 @@ int main(void)
     // bind
     myaddr.sin_family = AF_INET;
     myaddr.sin_addr.s_addr = INADDR_ANY;
-    myaddr.sin_port = htons(PORT);
+    myaddr.sin_port = htons(SERVER_PORT);
     memset(&(myaddr.sin_zero), '\0', 8);
     if (bind(listener, (struct sockaddr *)&myaddr, sizeof(myaddr)) == -1)
     {

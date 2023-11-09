@@ -1,23 +1,6 @@
 
 
-#include <iostream>
-#include <stdio.h>
-#include <strings.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <netdb.h>
-#include <cstring>
-#include <cstdlib>
-#include <list>
-
-using namespace std;
-
-#define SERVER_PORT 1245
-#define MAX_LINE 256
-#define STDIN 0
+#include "common.h"
 
 string convertToString(char *a, int size)
 {
