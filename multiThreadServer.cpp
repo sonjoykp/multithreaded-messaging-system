@@ -118,6 +118,8 @@ bool check_user(string name)
         }
         ptr = ptr->next;
     }
+    
+    return false;
 }
 
 void Send_Sender(int x) // Message notification on the sender side to inform of success
@@ -137,13 +139,8 @@ void *ChildThread(void *newfd)
     int nbytes;
     int i, j;
     int childSocket = (long)newfd;
-    string login = "LOGIN"; // user commands
-    string logout = "LOGOUT";
-    string quit = "QUIT";
-    string msgget = "MSGGET";
-    string msgstore = "MSGSTORE";
-    string stdown = "SHUTDOWN";
-    string wh = "WHO";
+
+    // string wh = "WHO";
     string sendJ = "SEND JOHN";
     string sendM = "SEND MARY";
     string sendD = "SEND DAVID";
@@ -176,10 +173,10 @@ void *ChildThread(void *newfd)
     bool shutdown = false;
     bool rootLogIn = false;
 
-    string acc0 = "LOGIN ROOT ROOT01"; // users for acceptable logins
-    string acc1 = "LOGIN JOHN JOHN01";
-    string acc2 = "LOGIN DAVID DAVID01";
-    string acc3 = "LOGIN MARY MARY01";
+    string loginRootCommand = "login root root01";
+    string loginJohnCommand = "login john john01";
+    string loginDavidCommand = "login david david01";
+    string loginMaryCommand = "login mary mary01";
 
     ifstream ifile;
     ofstream ofile;
@@ -229,54 +226,60 @@ void *ChildThread(void *newfd)
             }
             else
             {
+                // cout << nbytes;
                 string recievedCommand = string(buf, nbytes - 1);
-			    cout << recievedCommand << endl;
-                cout << buf;
-                if (strcmp(buf, wh.c_str()) == 10) // WHO Command Begins
+                // cout << recievedCommand;
+                // cout << buf;
+                if (isSameNoCase(recievedCommand, who_command)) // WHO Command Begins
                 {
-                    temp = "200 OK\n The list of active users: \n";
-                    strcpy(buf, temp.c_str());
+                    string responseMessage = "200 OK\n The list of active users: \n";
+                    // strcpy(buf, temp.c_str());
                     for (it = Names.begin(); it != Names.end(); it++)
                     {
-                        temp += " ";
-                        temp += *it;
-                        temp += "\n";
-                        strcpy(buf, temp.c_str());
+                        responseMessage += " ";
+                        responseMessage += *it;
+                        responseMessage += "\n";
+                        // strcpy(buf, temp.c_str());
                     }
-                    send(childSocket, buf, strlen(buf) + 1, 0);
+                    // send(childSocket, buf, strlen(buf) + 1, 0);
+                    send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                     break;
-                }                                      // WHO Command Ends
-                if (strcmp(buf, msgget.c_str()) == 10) // MSGGET Command Begins
+                }                                                       // WHO Command Ends
+                else if (isSameNoCase(recievedCommand, msgget_command)) // MSGGET Command Begins
                 {
-                    temp = "200 OK\n   ";
-                    temp += messages[m];
-                    temp += "\n";
-                    strcpy(buf, temp.c_str());
+                    string responseMessage = "200 OK\n   ";
+                    responseMessage += messages[m];
+                    responseMessage += "\n";
+                    // strcpy(buf, temp.c_str());
                     m++;
                     if (m == itotal) // resets incrementer for msgget calls
                     {
                         m = 0;
                     }
-                    send(childSocket, buf, strlen(buf) + 1, 0);
+                    // send(childSocket, buf, strlen(buf) + 1, 0);
+                    send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                     break;
 
-                }                                        // MSGGET Command Ends
-                if (strcmp(buf, msgstore.c_str()) == 10) // MSGSTORE Command Begins
+                }                                                             // MSGGET Command Ends
+                else if (startsWithNoCase(recievedCommand, msgstore_command)) // MSGSTORE Command Begins
                 {
+                    string responseMessage;
                     if (loggedIn == false) // error condition if user is not logged in
                     {
-                        temp = "401 You are not currently logged in, login first";
-                        temp += "\n";
-                        strcpy(buf, temp.c_str());
-                        send(childSocket, buf, strlen(buf) + 1, 0);
+                        responseMessage = "401 You are not currently logged in, login first";
+                        responseMessage += "\n";
+                        // strcpy(buf, temp.c_str());
+                        // send(childSocket, buf, strlen(buf) + 1, 0);
+                        send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                         break;
                     }
                     if (loggedIn == true)
                     {
-                        temp = "200 OK\n";
-                        temp += "Enter a message of the day\n"; // added message for user friendliness
-                        strcpy(buf, temp.c_str());
-                        send(childSocket, buf, strlen(buf) + 1, 0); // sends 200 OK, then waits to  receive the user's message
+                        responseMessage = "200 OK\n";
+                        responseMessage += "Enter a message of the day\n"; // added message for user friendliness
+                        // strcpy(buf, temp.c_str());
+                        // send(childSocket, buf, strlen(buf) + 1, 0); // sends 200 OK, then waits to  receive the user's message
+                        send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                         recv(childSocket, get, sizeof(get), 0);
                         size = sizeof(get) / sizeof(char);
                         addmsg = convertToString(get, size); // converts the message into a string and stores it in a variable
@@ -293,7 +296,7 @@ void *ChildThread(void *newfd)
                         break;
                     } // MSGSTORE Command Ends
                 }
-                if (strcmp(buf, acc1.c_str()) == 10 || strcmp(buf, acc2.c_str()) == 10 || strcmp(buf, acc3.c_str()) == 10) // LOGIN Command Begins
+                else if (isSameNoCase(recievedCommand, loginDavidCommand) || isSameNoCase(recievedCommand, loginJohnCommand) || isSameNoCase(recievedCommand, loginMaryCommand)) // LOGIN Command Begins
                 {
                     temp1 = inet_ntoa(remoteaddr.sin_addr); // grabs the ip addresses and stores in list
                     string temp2(temp1);
@@ -320,7 +323,7 @@ void *ChildThread(void *newfd)
                     send(childSocket, buf, strlen(buf) + 1, 0);
                     break;
                 }
-                if (strcmp(buf, acc0.c_str()) == 10) // if the user is the root
+                else if (isSameNoCase(recievedCommand, loginRootCommand)) // if the user is the root
                 {
                     temp1 = inet_ntoa(remoteaddr.sin_addr);
                     string temp2(temp1);
@@ -348,7 +351,7 @@ void *ChildThread(void *newfd)
                     rootLogIn = true;
                     break;
                 }
-                if (strcmp(buf, login.c_str()) == 32) // error case for any other users
+                else if (strcmp(buf, login_command.c_str()) == 32) // error case for any other users
                 {
                     temp = "410 Wrong UserID or Password\n";
                     strcpy(buf, temp.c_str());
@@ -356,7 +359,7 @@ void *ChildThread(void *newfd)
                     break;
 
                 } // LOGIN Command Ends
-                if (strcmp(buf, sendJ.c_str()) == 10)
+                else if (strcmp(buf, sendJ.c_str()) == 10)
                 {                                   // SEND Command for john begins (same logic for all cases)
                     if (check_user(sendJ) == false) // error condition check
                     {
@@ -387,7 +390,7 @@ void *ChildThread(void *newfd)
                         break;
                     }
                 } // SEND Command for john ends
-                if (strcmp(buf, sendD.c_str()) == 10)
+                else if (strcmp(buf, sendD.c_str()) == 10)
                 { // SEND command for david begins
                     if (check_user(sendD) == false)
                     {
@@ -419,7 +422,7 @@ void *ChildThread(void *newfd)
                         break;
                     }
                 } // SEND Command for david ends
-                if (strcmp(buf, sendM.c_str()) == 10)
+                else if (strcmp(buf, sendM.c_str()) == 10)
                 { // SEND command for mary begins
                     if (check_user(sendM) == false)
                     {
@@ -451,7 +454,7 @@ void *ChildThread(void *newfd)
                         break;
                     }
                 } // SEND Command for mary ends
-                if (strcmp(buf, sendR.c_str()) == 10)
+                else if (strcmp(buf, sendR.c_str()) == 10)
                 { // SEND command for root begins
                     if (check_user(sendR) == false)
                     {
@@ -481,8 +484,8 @@ void *ChildThread(void *newfd)
                         Send_Sender(childSocket);
                         break;
                     }
-                }                                      // SEND Command for root ends
-                if (strcmp(buf, logout.c_str()) == 10) // LOGOUT Command Begins
+                }                                                       // SEND Command for root ends
+                else if (isSameNoCase(recievedCommand, logout_command)) // LOGOUT Command Begins
                 {
                     if (loggedIn == true)
                     {
@@ -500,7 +503,7 @@ void *ChildThread(void *newfd)
                     break;
                 } // LOGOUT Command Ends
 
-                if (strcmp(buf, quit.c_str()) == 10) // QUIT Command Begins
+                else if (isSameNoCase(recievedCommand, quit_command)) // QUIT Command Begins
                 {
                     RemoveNames(User); // removes name from list once quit
                     temp = "200 OK\n";
@@ -509,7 +512,7 @@ void *ChildThread(void *newfd)
                     break;
                 } // QUIT Command Ends
 
-                if (strcmp(buf, stdown.c_str()) == 10) // SHUTDOWN Command Begins
+                else if (isSameNoCase(recievedCommand, shutdown_command)) // SHUTDOWN Command Begins
                 {
                     if (rootLogIn) // only can be used if the user is the root
                     {
