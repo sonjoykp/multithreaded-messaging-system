@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define PORT 1245 // port we're listening on
+#define PORT 9902 // port we're listening on
 #define MAX_LINE 256
 
 fd_set master; // master file descriptor list
