@@ -1,2 +1,1 @@
-1. Shudown not exiting in client side
-2. Send is not working
+Send is not working
