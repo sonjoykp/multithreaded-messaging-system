@@ -1,12 +1,4 @@
-
-
 #include "common.h"
-
-string convertToString(char *a, int size)
-{
-    string strng = a;
-    return strng;
-}
 
 int main(int argc, char *argv[])
 {
@@ -68,10 +60,10 @@ int main(int argc, char *argv[])
         }
 
         // looking for data to read either from the server or the user
+        string inputCommand;
         if (FD_ISSET(STDIN, &read_fds))
         {
             // handle the user input
-            string inputCommand;
             getline(cin, inputCommand);
             send(s, inputCommand.c_str(), inputCommand.size() + 1, 0);
             if (isSameNoCase(inputCommand, quit_command))
@@ -90,7 +82,8 @@ int main(int argc, char *argv[])
             {
                 string messageFromServer = string(buf, receivedbytes - 1);
                 cout << messageFromServer;
-                if (isSameNoCase(shutdown_message, messageFromServer))
+                if ((isSameNoCase(shutdown_message, messageFromServer)) || //if the client get shutdown message from server it will close the connect and exit the program.
+                    (isSameNoCase(inputCommand, quit_command) && isSameNoCase(server_sucess_message, messageFromServer)))
                 {
                     close(s);
                     exit(1);

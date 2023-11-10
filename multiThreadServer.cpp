@@ -1,144 +1,72 @@
 #include "common.h"
 
+using namespace std;
+
 fd_set master; // master file descriptor list
 int listener;  // listening socket descriptor
 int fdmax;
-string client_addresses[10];
 struct sockaddr_in remoteaddr;
-list<string> Names;
-list<string>::iterator it = Names.begin();
 
-struct Node
-{ // node list used for send and shutdown function
-    string Data;
-    string user;
-    int Socket;
-    struct Node *next;
-};
+unordered_map<int, string> SocketVSAddress;
+unordered_map<int, string> SocketVsUserName;
+int iTotalNumberofMessages;
+string message_list[20]; // stores the messages from txt file in array
 
-Node Head;
-
-string convertToString(char *a, int size)
+std::string extractLoginUsername(const std::string &inputString)
 {
-    string strng = a;
-    return strng;
-}
+    std::istringstream iss(inputString);
+    std::string login, username, password;
 
-string getUsername(string msg) // grabs the username from the login string
-{
-    char ptr;
-    int x = 0;
-    int i = 6;
-    char userch[MAX_LINE];
-    int size;
-    string username;
-    ptr = msg[i];
-    while (ptr != ' ')
+    if (!(iss >> login >> username >> password) || login != "login")
     {
-        userch[x] = ptr;
-        x++;
-        i++;
-        ptr = msg[i];
+        // Either "login" not found or incorrect format
+        return "";
     }
-    size = sizeof(userch) / sizeof(char);
-    username = convertToString(userch, size);
-    // username += 'D';
 
     return username;
 }
 
-void InsertNames(string name) // inserts usernames into a list (used for WHO function)
+void readAndStoreInitMessagesFromFile()
 {
-    for (int z = 0; z < name.length(); z++)
-    {
-        name[z] = tolower(name[z]);
-    }
-    Names.push_front(name);
-}
+    // File read and store messages from
+    ifstream ifile;
+    ifile.open("messages.txt");
+    int cnt = 0;
 
-void RemoveNames(string name) // removes usernames from list once logged out or quit
-{
-    for (int z = 0; z < name.length(); z++)
+    string line;
+    while (getline(ifile, line))
     {
-        name[z] = tolower(name[z]);
-    }
-    Names.remove(name);
-}
-
-void AddNodes(string name, string user, int sockt) // adds nodes and socket numbers to a linked list, used in correlation with SEND
-{
-    Node *t = &Head;
-    Node *P1 = new Node();
-    P1->Data = name;
-    P1->user = user;
-    P1->Socket = sockt;
-    while (t->next != NULL)
-    {
-        t = t->next;
-    }
-    t->next = P1;
-}
-
-void Send_Message(string name, string xperson, string msg)
-{ // Sends message to client
-
-    Node *m = &Head;
-    int s;
-    char g[MAX_LINE];
-    string mg = "200 OK you have a new message from ";
-    while (m != NULL)
-    {
-        if (m->Data == name)
+        if (!line.empty() && iTotalNumberofMessages < 20)
         {
-            cout << m->Socket;
-            mg += xperson;
-            mg += "\n";
-            mg += xperson;
-            mg += ": ";
-            mg += msg;
-            strcpy(g, mg.c_str());
-            send(m->Socket, g, strlen(g) + 1, 0);
+            message_list[cnt] = line;
+            ++cnt;
+            ++iTotalNumberofMessages;
         }
-        m = m->next;
     }
+
+    ifile.close();
 }
 
-bool check_user(string name)
-{
-    Node *ptr = &Head;
-    while (ptr != NULL)
+int getLoggedinUserSocketNumber(string userName)
+{ // if the loggedin user found return socket number othewise return INT_MAX
+    for (auto &user : SocketVsUserName)
     {
-        if (ptr->Data == name)
-        {
-            return true;
-        }
-        if (ptr == NULL)
-        {
-            return false;
-        }
-        ptr = ptr->next;
+        if (isSameNoCase(user.second, userName))
+            return user.first;
     }
-
-    return false;
-}
-
-void Send_Sender(int x) // Message notification on the sender side to inform of success
-{
-    char buf[MAX_LINE];
-    string temp;
-    temp = "200 OK\n";
-    strcpy(buf, temp.c_str());
-    send(x, buf, strlen(buf) + 1, 0);
+    return INT_MAX;
 }
 
 // the child thread
 void *ChildThread(void *newfd)
 {
     char buf[MAX_LINE];
-    char get[MAX_LINE];
+
     int nbytes;
     int i, j;
     int childSocket = (long)newfd;
+
+    int iCurrentDisplayedMeesageIndex = 0;
 
     // string wh = "WHO";
     string sendJohnCommand = "SEND JOHN";
@@ -146,64 +74,18 @@ void *ChildThread(void *newfd)
     string sendDavidCommand = "SEND DAVID";
     string sendRootCommand = "SEND ROOT";
 
-    string david = "david"; // usernames stored in lowercase
-    string mary = "mary";
-    string root = "root";
-    string john = "john";
+    string currentLoggedinUserName;
 
-    int size;
-    int len;
-    int s;
-    string addmsg;
-    string messages[20]; // stores the messages from txt file in array
-    string temp;
-    int itotal = 0; // limiter for number of messages stored
-    int m = 0;
-    char *temp1;
-    int a = 0;
-    string User;
-    string usermsg;
-    string Just_User;
-    string msg;
-    Node *hptr = &Head;
-    Node *ptrshut = &Head; // used for shutdown function
-    string lnames;
-
-    bool loggedIn = false; // conditions
-    bool shutdown = false;
-    bool rootLogIn = false;
+    bool isUserLoggedIn = false; // conditions
+    bool serverShutdown = false;
+    bool isRootUserLoggedIn = false;
 
     string loginRootCommand = "login root root01";
     string loginJohnCommand = "login john john01";
     string loginDavidCommand = "login david david01";
     string loginMaryCommand = "login mary mary01";
 
-    ifstream ifile;
-    ofstream ofile;
-
-    ifile.open("messages.txt");
-    int f = 0;
-    if (ifile.is_open()) // opens txt file and grabs each line from the file, stores that line in the array
-    {
-        getline(ifile, messages[f]);
-        messages[f] += '\n';
-        messages[f] += '\0';
-        while (ifile)
-        {
-            ++f;
-            ++itotal; // keeps track of the total number of messages stored
-            getline(ifile, messages[f]);
-            messages[f] += '\n';
-            messages[f] += '\0';
-        }
-    }
-    ifile.close();
-
-    ofile.open("messages.txt", ios::app); // ensures that when msgstore is called, message added on newline
-    ofile << "\n";
-    ofile.close();
-
-    while (!shutdown)
+    while (!serverShutdown)
     {
         while (1)
         {
@@ -227,13 +109,16 @@ void *ChildThread(void *newfd)
             else
             {
                 string recievedCommand = string(buf, nbytes - 1);
+                cout << recievedCommand << endl;
                 if (isSameNoCase(recievedCommand, who_command)) // WHO Command Begins
                 {
                     string responseMessage = "200 OK\n The list of active users: \n";
-                    for (it = Names.begin(); it != Names.end(); it++)
+                    for (const auto &pair : SocketVsUserName)
                     {
                         responseMessage += " ";
-                        responseMessage += *it;
+                        responseMessage += pair.second;
+                        responseMessage += "\t";
+                        responseMessage += SocketVSAddress[pair.first];
                         responseMessage += "\n";
                     }
                     send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
@@ -242,13 +127,13 @@ void *ChildThread(void *newfd)
                 else if (isSameNoCase(recievedCommand, msgget_command)) // MSGGET Command Begins
                 {
                     string responseMessage = "200 OK\n   ";
-                    responseMessage += messages[m];
+                    responseMessage += message_list[iCurrentDisplayedMeesageIndex];
                     responseMessage += "\n";
-                    m++;
-                    if (m == itotal) // resets incrementer for msgget calls
-                    {
-                        m = 0;
-                    }
+
+                    iCurrentDisplayedMeesageIndex++;
+                    if (iCurrentDisplayedMeesageIndex == iTotalNumberofMessages)
+                        iCurrentDisplayedMeesageIndex = 0;
+
                     send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                     break;
 
@@ -256,273 +141,185 @@ void *ChildThread(void *newfd)
                 else if (startsWithNoCase(recievedCommand, msgstore_command)) // MSGSTORE Command Begins
                 {
                     string responseMessage;
-                    if (loggedIn == false) // error condition if user is not logged in
+                    if (isUserLoggedIn)
                     {
-                        responseMessage = "401 You are not currently logged in, login first";
-                        responseMessage += "\n";
-                        send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
-                        break;
-                    }
-                    if (loggedIn == true)
-                    {
-                        responseMessage = "200 OK\n";
-                        responseMessage += "Enter a message of the day\n"; // added message for user friendliness
-                        // sends 200 OK, then waits to  receive the user's message
-                        send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
-                        recv(childSocket, get, sizeof(get), 0);
-                        size = sizeof(get) / sizeof(char);
-                        addmsg = string(get, size); // converts the message into a string and stores it in a variable
+                        if (iTotalNumberofMessages < 20)
+                        {
+                            responseMessage = server_sucess_message;
+                            // responseMessage += "Enter a message of the day:\n"; // added message for user friendliness
+                            // sends 200 OK, then waits to  receive the user's message
+                            send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
 
-                        ofile.open("messages.txt", ios::app);
-                        ofile << addmsg; // writes the user's message at the first available newline
-                        ofile.close();
-                        messages[itotal] = addmsg;
-                        itotal++; // increments since there is a new total
-                        cout << addmsg;
-                        temp = "200 OK\n";
-                        strcpy(buf, temp.c_str());
-                        send(childSocket, buf, strlen(buf) + 1, 0);
-                        break;
-                    } // MSGSTORE Command Ends
-                }
+                            char getBuffer[MAX_LINE];
+                            int byteCnt = recv(childSocket, getBuffer, sizeof(getBuffer), 0);
+                            string newMessageofTheDay = string(getBuffer, byteCnt - 1); // converts the message into a string and stores it in a variable
+                            if (!newMessageofTheDay.empty())
+                            {
+                                message_list[iTotalNumberofMessages] = newMessageofTheDay;
+                                ++iTotalNumberofMessages;
+
+                                ofstream ofile;
+                                ofile.open("messages.txt", ios::app);
+                                // Check if the file is empty
+                                ofile.seekp(0, std::ios::end);
+                                if (ofile.tellp() != 0)
+                                {
+                                    // If the file is not empty, add a newline before writing
+                                    ofile << std::endl;
+                                }
+                                ofile << newMessageofTheDay;
+                                ofile.close();
+                                responseMessage = server_sucess_message;
+                            }
+                        }
+                        else
+                        {
+                            responseMessage = "402 No more space max limit exceed\n";
+                        }
+                    }
+                    else // error condition if user is not logged in
+                    {
+                        responseMessage = "401 You are not currently logged in, login first\n";
+                    }
+
+                    send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                    break;
+
+                } // MSGSTORE Command Ends
                 else if (startsWithNoCase(recievedCommand, login_command))
                 {
-                    if (isSameNoCase(recievedCommand, loginDavidCommand) || 
-                        isSameNoCase(recievedCommand, loginJohnCommand) || 
-                        isSameNoCase(recievedCommand, loginMaryCommand)) // LOGIN Command Begins
+                    string responseMessage;
+                    if (isSameNoCase(recievedCommand, loginDavidCommand) ||
+                        isSameNoCase(recievedCommand, loginJohnCommand) ||
+                        isSameNoCase(recievedCommand, loginMaryCommand) ||
+                        isSameNoCase(recievedCommand, loginRootCommand)) // LOGIN Command Begins
                     {
-                        temp1 = inet_ntoa(remoteaddr.sin_addr); // grabs the ip addresses and stores in list
-                        string temp2(temp1);
-                        client_addresses[a] = temp2;
-                        size = sizeof(buf) / sizeof(char);
-                        usermsg = convertToString(buf, size);
-                        Just_User += "SEND "; // accounts for SEND function
-                        Just_User += getUsername(usermsg);
-                        User = getUsername(usermsg);
-                        lnames = User;
-                        for (int z = 0; z < lnames.length(); z++) // lowercase the users
-                        {
-                            lnames[z] = tolower(lnames[z]);
-                        }
-                        AddNodes(Just_User, lnames, childSocket);
-                        User += "\t";
-                        User += client_addresses[a];
-                        InsertNames(User); // insert usernames into list once logged in
-                        it++;
-                        a++;
-                        temp = "200 OK\n";
-                        loggedIn = true; // for users that are not the root
-                        strcpy(buf, temp.c_str());
-                        send(childSocket, buf, strlen(buf) + 1, 0);
-                        break;
-                    }
-                    else if (isSameNoCase(recievedCommand, loginRootCommand)) // if the user is the root
-                    {
-                        temp1 = inet_ntoa(remoteaddr.sin_addr);
-                        string temp2(temp1);
-                        client_addresses[a] = temp2;
-                        size = sizeof(buf) / sizeof(char);
-                        usermsg = convertToString(buf, size);
-                        Just_User += "SEND ";
-                        Just_User += getUsername(usermsg);
-                        User = getUsername(usermsg);
-                        lnames = User;
-                        for (int z = 0; z < lnames.length(); z++)
-                        {
-                            lnames[z] = tolower(lnames[z]);
-                        }
-                        AddNodes(Just_User, lnames, childSocket);
-                        User += "\t";
-                        User += client_addresses[a];
-                        InsertNames(User);
-                        it++;
-                        a++;
-                        temp = "200 OK\n";
-                        strcpy(buf, temp.c_str());
-                        send(childSocket, buf, strlen(buf) + 1, 0);
-                        loggedIn = true;
-                        rootLogIn = true;
-                        break;
+                        string userName = extractLoginUsername(recievedCommand);
+                        SocketVsUserName[childSocket] = userName;
+                        currentLoggedinUserName = userName;
+
+                        isUserLoggedIn = true; // for users that are not the root
+                        if (isSameNoCase(userName, root_username))
+                            isRootUserLoggedIn = true;
+
+                        responseMessage = server_sucess_message;
                     }
                     else // error case for any other users
                     {
-                        temp = "410 Wrong UserID or Password\n";
-                        strcpy(buf, temp.c_str());
-                        send(childSocket, buf, strlen(buf) + 1, 0);
-                        break;
+                        responseMessage = "410 Wrong UserID or Password\n";
                     }
+
+                    send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                    break;
+
                 } // LOGIN Command Ends
                 else if (startsWithNoCase(recievedCommand, send_command))
                 {
-                    if (isSameNoCase(recievedCommand, sendJohnCommand))
-                    {                                   // SEND Command for john begins (same logic for all cases)
-                        if (check_user(sendJohnCommand) == false) // error condition check
+                    string responseMessage;
+                    if (!isUserLoggedIn)
+                    {
+                        responseMessage = "401 You are not currently logged in, login first\n";
+                        send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                        break;
+                    }
+                    else if (isSameNoCase(recievedCommand, sendJohnCommand) ||
+                             isSameNoCase(recievedCommand, sendDavidCommand) ||
+                             isSameNoCase(recievedCommand, sendMaryCommand) ||
+                             isSameNoCase(recievedCommand, sendRootCommand))
+                    { // SEND Command for john begins (same logic for all cases)
+                        string TargetUserName = removePrefixNoCase(recievedCommand, send_command + " ");
+                        int targetUserSocketNumber = getLoggedinUserSocketNumber(TargetUserName);
+                        cout << "Target Socket number: " << targetUserSocketNumber << endl;
+
+                        if (targetUserSocketNumber == INT_MAX) // error condition check
                         {
-                            temp = "420 either the user does not exist or is not logged in\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
+                            responseMessage.clear();
+                            responseMessage = "420 either the user does not exist or is not logged in\n";
+                            send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                             break;
                         }
                         else
                         {
-                            temp = "200 OK\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            recv(childSocket, get, sizeof(get), 0);
-                            size = sizeof(get) / sizeof(char);
-                            msg = convertToString(get, size);
-                            hptr = &Head;
-                            while (hptr != NULL)
+                            responseMessage.clear();
+                            responseMessage = server_sucess_message;
+                            send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                            char sendMessageBuffer[MAX_LINE];
+                            int bytecnt = recv(childSocket, sendMessageBuffer, sizeof(sendMessageBuffer), 0);
+                            if (bytecnt < 0)
                             {
-                                if (hptr->Socket == childSocket) // identifies john in the list
-                                {
-                                    john = hptr->user;
-                                }
-                                hptr = hptr->next;
+                                responseMessage.clear();
+                                responseMessage = "s: Could not read message to send.";
+                                send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                                break;
                             }
-                            Send_Message(sendJohnCommand, john, msg); // sends john the message
-                            Send_Sender(childSocket);       // sends the sender confirmation
+
+                            string AcutalMsgToSend = string(sendMessageBuffer, bytecnt - 1);
+                            cout << AcutalMsgToSend << endl;
+
+                            responseMessage.clear();
+                            responseMessage = "s: 200 OK you have a new message from ";
+                            responseMessage += currentLoggedinUserName;
+                            responseMessage += "  ";
+                            responseMessage += currentLoggedinUserName;
+                            responseMessage += ": ";
+                            responseMessage += AcutalMsgToSend;
+                            cout << responseMessage << endl;
+                            strcpy(sendMessageBuffer, responseMessage.c_str());
+                            send(targetUserSocketNumber, sendMessageBuffer, strlen(sendMessageBuffer) + 1, 0);
+
+                            responseMessage.clear();
+                            responseMessage = server_sucess_message;
+                            send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                             break;
                         }
                     } // SEND Command for john ends
-                    else if (isSameNoCase(recievedCommand, sendDavidCommand))
-                    { // SEND command for david begins
-                        if (check_user(sendDavidCommand) == false)
-                        {
-                            temp = "420 either the user does not exist or is not logged in\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            break;
-                        }
-                        else
-                        {
-                            temp = "200 OK\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            recv(childSocket, get, sizeof(get), 0);
-                            size = sizeof(get) / sizeof(char);
-                            msg = convertToString(get, size);
-                            cout << msg;
-                            hptr = &Head;
-                            while (hptr != NULL)
-                            {
-                                if (hptr->Socket == childSocket)
-                                {
-                                    david = hptr->user;
-                                }
-                                hptr = hptr->next;
-                            }
-                            Send_Message(sendDavidCommand, david, msg);
-                            Send_Sender(childSocket);
-                            break;
-                        }
-                    } // SEND Command for david ends
-                    else if (isSameNoCase(recievedCommand, sendMaryCommand))
-                    { // SEND command for mary begins
-                        if (check_user(sendMaryCommand) == false)
-                        {
-                            temp = "420 either the user does not exist or is not logged in\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            break;
-                        }
-                        else
-                        {
-                            temp = "200 OK\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            recv(childSocket, get, sizeof(get), 0);
-                            size = sizeof(get) / sizeof(char);
-                            msg = convertToString(get, size);
-                            cout << msg;
-                            hptr = &Head;
-                            while (hptr != NULL)
-                            {
-                                if (hptr->Socket == childSocket)
-                                {
-                                    mary = hptr->user;
-                                }
-                                hptr = hptr->next;
-                            }
-                            Send_Message(sendMaryCommand, mary, msg);
-                            Send_Sender(childSocket);
-                            break;
-                        }
-                    } // SEND Command for mary ends
-                    else if (isSameNoCase(recievedCommand, sendRootCommand))
-                    { // SEND command for root begins
-                        if (check_user(sendRootCommand) == false)
-                        {
-                            temp = "420 either the user does not exist or is not logged in\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            break;
-                        }
-                        else
-                        {
-                            temp = "200 OK\n";
-                            strcpy(buf, temp.c_str());
-                            send(childSocket, buf, strlen(buf) + 1, 0);
-                            recv(childSocket, get, sizeof(get), 0);
-                            size = sizeof(get) / sizeof(char);
-                            msg = convertToString(get, size);
-                            hptr = &Head;
-                            while (hptr != NULL)
-                            {
-                                if (hptr->Socket == childSocket)
-                                {
-                                    root = hptr->user;
-                                }
-                                hptr = hptr->next;
-                            }
-                            Send_Message(sendRootCommand, root, msg);
-                            Send_Sender(childSocket);
-                            break;
-                        }
+                    else
+                    {
+                        responseMessage.clear();
+                        responseMessage = "Invalid target username";
+                        send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                        break;
                     }
                 }                                                       // SEND Command for root ends
                 else if (isSameNoCase(recievedCommand, logout_command)) // LOGOUT Command Begins
                 {
                     string responseMessage = "Response from Server: No logged in user\n";
-                    if (loggedIn == true)
+                    if (isUserLoggedIn)
                     {
-                        loggedIn = false;  // user is logged out, preventing user from using msgstore
-                        RemoveNames(User); // removes names from list once logged out
-                        responseMessage = "200 OK\n";
+                        isUserLoggedIn = false; // user is logged out, preventing user from using msgstore
+                        SocketVSAddress.erase(childSocket);
+                        SocketVsUserName.erase(childSocket);
+                        responseMessage = server_sucess_message;
                     }
-                    if (rootLogIn)
+                    if (isRootUserLoggedIn)
                     {
-                        rootLogIn = false; // added condition that has to be changed if user is the root
-                        RemoveNames(User);
-                        responseMessage = "200 OK\n";
+                        isRootUserLoggedIn = false; // added condition that has to be changed if user is the root
                     }
                     send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                     break;
                 }                                                     // LOGOUT Command Ends
                 else if (isSameNoCase(recievedCommand, quit_command)) // QUIT Command Begins
                 {
-                    RemoveNames(User); // removes name from list once quit
-                    string responseMessage = "200 OK\n";
-                    // simply sends 200 OK, termination process on client side
-                    send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                    SocketVSAddress.erase(childSocket);
+                    SocketVsUserName.erase(childSocket);
+                    string responseMessage = server_sucess_message;
+                    send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0); // simply sends 200 OK, termination process on client side
                     break;
                 }                                                         // QUIT Command Ends
                 else if (isSameNoCase(recievedCommand, shutdown_command)) // SHUTDOWN Command Begins
                 {
                     string responseMessage;
-                    if (rootLogIn) // only can be used if the user is the root
+                    if (isRootUserLoggedIn) // only can be used if the user is the root
                     {
                         // outputs message, closes socket, terminates server
                         responseMessage = shutdown_message;
-                        ptrshut = &Head;
-                        while (ptrshut != NULL) // goes through each open client and closes the socket
+                        for (auto &Socket : SocketVSAddress) // goes through each open client and closes the socket
                         {
-                            send(ptrshut->Socket, responseMessage.c_str(), responseMessage.size() + 1, 0);
-                            close(ptrshut->Socket);
-                            ptrshut = ptrshut->next;
+                            send(Socket.first, responseMessage.c_str(), responseMessage.size() + 1, 0);
+                            close(Socket.first);
                         }
                         cout << "System has shutdown\n";
-                        shutdown = true;
+                        serverShutdown = true;
                         exit(1);
                         break;
                     }
@@ -532,8 +329,7 @@ void *ChildThread(void *newfd)
                         send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                         break;
                     }
-                    // SHUTDOWN Command Ends
-                }
+                } // SHUTDOWN Command Ends
                 else
                 {
                     string responseMessage = "Enter a valid command\n"; // error message if user enters any other command
@@ -547,6 +343,7 @@ void *ChildThread(void *newfd)
 
 int main(void)
 {
+    readAndStoreInitMessagesFromFile();
     struct sockaddr_in myaddr; // server address
                                // client address
     int newfd;                 // newly accept()ed socket descriptor
@@ -617,6 +414,7 @@ int main(void)
             cout << "multiThreadServer: new connection from "
                  << inet_ntoa(remoteaddr.sin_addr)
                  << " socket " << newfd << endl;
+            SocketVSAddress[newfd] = string(inet_ntoa(remoteaddr.sin_addr));
             i++;
             if (newfd > fdmax)
             { // keep track of the maximum

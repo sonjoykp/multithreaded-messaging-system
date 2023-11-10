@@ -24,6 +24,10 @@
 #include <netdb.h>
 #include <string>
 #include <list>
+#include <map>
+#include <unordered_map>
+#include <iostream>
+#include <sstream>
 
 #define SERVER_PORT 9902
 #define MAX_LINE 256
@@ -39,7 +43,9 @@ string shutdown_command = "shutdown";
 string msgstore_command = "msgstore";
 string who_command = "who";
 string send_command = "send";
-string shutdown_message = "210 the server is about to shutdown......\n";
+string shutdown_message = "s: 210 the server is about to shutdown......\n";
+string server_sucess_message = "s: 200 OK\n";
+string root_username = "root";
 
 bool startsWithNoCase(const std::string &str, const std::string &prefix)
 {
