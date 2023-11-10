@@ -1,6 +1,8 @@
-client
-client.o
+*.o
 server
-server.o
+client
 .vscode/settings.json
 sclient
+multiThreadServer
+.DS_Store
+

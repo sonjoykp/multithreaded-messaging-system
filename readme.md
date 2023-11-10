@@ -1,8 +1,30 @@
-# MultiThreaded Client-Server Messaging System
+# Multi-Threaded Client-Server Messaging System
 
 ## Overview
 
-This project comprises two programs: the client and server applications, designed to work collaboratively. The server program must be running before the client is executed. Multiple clients can connect to this server concurrently.
+The YAMOTD (Yet Another Message of the Day) Server-Client Application is a versatile system designed to demonstrate the fundamentals of socket programming and client-server applications. This project involves the creation of a server and client application, both of which communicate over TCP sockets and adhere to the YAMOTD protocol.
+
+
+## Key Features:
+
+### Server Operations:
+- Initialization with preloaded messages of the day.
+- Handling incoming client requests.
+- Message retrieval (MSGGET), message uploading (MSGSTORE), server shutdown (SHUTDOWN), and user authentication (LOGIN).
+### Client Operations:
+- Sending commands to the server: MSGGET, MSGSTORE, SHUTDOWN, LOGIN, LOGOUT, QUIT.
+- Displaying server responses.
+
+### YAMOTD Protocol:
+
+- MSGGET: Retrieve a message of the day from the server.
+- MSGSTORE: Upload a message to the server (authorized users only).
+- SHUTDOWN: Terminate the server (root user privilege).
+- LOGIN: Authenticate a user with a UserID and Password.
+- LOGOUT: Log out from the server (restricts MSGSTORE, SHUTDOWN, WHO, and SEND).
+- QUIT: Terminate the client-server connection.
+- WHO: List all active users, including UserID and IP addresses.
+- SEND: Send private messages to active users.
 
 ## Compilation Instructions
 
@@ -173,4 +195,7 @@ SHUTDOWN
 System has shutdown
 ```
 
-Please note that this README provides essential information for understanding and utilizing the project.
+## Contributors:
+
+- [Sonjoy Kumar Paul](https://github.com/sonjoykp)
+- [Amrit Minocha](https://github.com/amritminocha)
