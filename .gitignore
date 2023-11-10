@@ -3,3 +3,4 @@ client.o
 server
 server.o
 .vscode/settings.json
+sclient
