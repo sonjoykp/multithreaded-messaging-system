@@ -1,69 +1,74 @@
+# MultiThreaded Client-Server Messaging System
 
-README file
+## Overview
 
-This project contains two programs; client and server, which work in coordination of
-one another. The server program should be running before the client is executed.
-The client program requires an IP address as a commandline argument of the server.
-Multiple clients can connect to this thread
+This project comprises two programs: the client and server applications, designed to work collaboratively. The server program must be running before the client is executed. Multiple clients can connect to this server concurrently.
 
-How to Compile:
+## Compilation Instructions
+
 1. Create a directory for the programs.
-2. When creating a directory, make sure it has the following files:
-	sclient.c
-	multiThreadServer.c
-	Makefile
-3. Go to the directory in terminal and type in "make clean" command
-4. Now type in "make" command
-5. It should output: 
-	g++ -g -c sclient.c
-	g++  -o sclient sclient.o
-	g++ -g -c multiThreadServer.c
-	g++  -o multiThreadServer multiThreadServer.o
+2. Ensure that the directory includes the following files:
+   - sclient.cpp
+   - multiThreadServer.cpp
+   - common.h
+   - Makefile
+3. Open a terminal and navigate to the project directory.
+4. Execute the "make clean" command to clean the previous build artifacts.
+5. Run the "make" command to compile the programs. You should observe output similar to the following:
 
-6. Apply these rules to both the client and server programs
+   ```
+   g++ -g -c sclient.cpp
+   g++ -o sclient sclient.o
+   g++ -g -c multiThreadServer.cpp
+   g++ -o multiThreadServer multiThreadServer.o
+   ```
 
+6. Apply the same compilation process to both the client and server programs.
 
-How to run:
-1. Open two window terminals
-2. In the first terminal window, type in the command, "./multiThreadServer"
-3. It should the send message: "The server is up, waiting for connection"
-4. In the second terminal window, type in the next command: "./sclient 127.0.0.1" or "./sclient (whatever your ip address is using the curl ifconfig.me command)"
-5. You can open a third terminal window and connect another client using the other option from step 4
+## Running the Programs
 
-Commands: 
-1. msgget
-This command from client sends a message to server to return the
-message of the day. The server has access to file messages.txt and 
-returns each message in that file in chronological order.
-		 
-2. shutdown
-It will allow the user on the client side to shutdown the server.
-ONLY ROOT has access to shutdown the server. Will display a message stating that the server
-has shutdown.
+1. Open two terminal windows.
+2. In the first terminal window, execute the following command:
 
-3. login username password
-It will allow the user at client side to log in to access the server.
-The login command is followed by username and password. If the credentials
-are authenticated, the user logs in, otherwise, it will display an error message.
+   ```
+   ./multiThreadServer
+   ```
 
-4. logout
-It will allow the logged in user to logout from the server
+   You should see the message: "The server is up, waiting for connections."
 
-5. quit 
-It will terminate the client connection from server. WIll display message indicating that client has been
-terminated.
+3. In the second terminal window, enter the following command to run the client, replacing "127.0.0.1" with the appropriate IP address if necessary:
 
-6. msgstore
-It will allow the user to upload one message to the server. The server will save
-the message to the messages.txt file. The limit for messages is 20.
+   ```
+   ./sclient 127.0.0.1
+   ```
 
-7. who
-It will output a list of current logged in users and their respective ip addresses
+   Alternatively, you can retrieve your IP address using the "curl ifconfig.me" command and use it with the client.
 
-8. send
-It will allow user to send a message to another specified logged in user
+4. To connect additional clients, you can open a third terminal window and execute the same command as in step 3.
 
-Sample Output for Client 1:
+## Supported Commands
+
+The client supports the following commands:
+
+1. `msgget`: Sends a request to the server to retrieve messages from a file named "messages.txt" in chronological order.
+
+2. `shutdown`: Allows the root user on the client side to shut down the server. This operation is restricted to the root user and will display a server shutdown message.
+
+3. `login username password`: Permits the user on the client side to log in to access the server. The `login` command should be followed by the desired username and password. If the credentials are authenticated, the user is logged in; otherwise, an error message will be displayed.
+
+4. `logout`: Allows the logged-in user to log out from the server.
+
+5. `quit`: Terminates the client's connection to the server. A message indicating that the client has been terminated will be displayed.
+
+6. `msgstore`: Enables the user to upload a single message to the server. The server will save the message to the "messages.txt" file, with a limit of 20 messages.
+
+7. `who`: Provides a list of currently logged-in users along with their respective IP addresses.
+
+8. `send`: Allows a user to send a message to another specified logged-in user.
+
+## Sample Output for Client 1
+
+```
 who
 200 OK
  The list of active users:
@@ -86,14 +91,17 @@ who
 send john
 420 either the user does not exist or is not logged in
 send root
- 200 OK
+200 OK
 what's up
 200 OK
 200 OK you have a new message from root
 root: how u
-210 the server is about to shutdown......
-----------------------------------------------------------------------------------------------------
-Sample Output for Client 2:
+210 the server is about to shutdown...
+```
+
+## Sample Output for Client 2
+
+```
 login root root01
 200 OK
 msgget
@@ -133,11 +141,12 @@ send david
 how u
 200 OK
 shutdown
-210 the server is about to shutdown......
+210 the server is about to shutdown...
+```
 
-----------------------------------------------------------------------------------------------------
-Sample Output for Server:
+## Sample Output for Server
 
+```
 multiThreadServer: new connection from 127.0.0.1 socket 4
 LOGIN ROOT ROOT01
 multiThreadServer: new connection from 141.215.69.204 socket 5
@@ -162,6 +171,6 @@ SEND DAVID
 how u
 SHUTDOWN
 System has shutdown
+```
 
-
-
+Please note that this README provides essential information for understanding and utilizing the project.
