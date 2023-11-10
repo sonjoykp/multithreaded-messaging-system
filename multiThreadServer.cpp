@@ -229,7 +229,7 @@ void *ChildThread(void *newfd)
                     { // SEND Command for john begins (same logic for all cases)
                         string TargetUserName = removePrefixNoCase(recievedCommand, send_command + " ");
                         int targetUserSocketNumber = getLoggedinUserSocketNumber(TargetUserName);
-                        cout << "Target Socket number: " << targetUserSocketNumber << endl;
+                        //cout << "Target Socket number: " << targetUserSocketNumber << endl;
 
                         if (targetUserSocketNumber == INT_MAX) // error condition check
                         {
@@ -252,24 +252,22 @@ void *ChildThread(void *newfd)
                                 send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
                                 break;
                             }
-
                             string AcutalMsgToSend = string(sendMessageBuffer, bytecnt - 1);
-                            cout << AcutalMsgToSend << endl;
-
-                            responseMessage.clear();
-                            responseMessage = "s: 200 OK you have a new message from ";
-                            responseMessage += currentLoggedinUserName;
-                            responseMessage += "  ";
-                            responseMessage += currentLoggedinUserName;
-                            responseMessage += ": ";
-                            responseMessage += AcutalMsgToSend;
-                            cout << responseMessage << endl;
-                            strcpy(sendMessageBuffer, responseMessage.c_str());
-                            send(targetUserSocketNumber, sendMessageBuffer, strlen(sendMessageBuffer) + 1, 0);
 
                             responseMessage.clear();
                             responseMessage = server_sucess_message;
                             send(childSocket, responseMessage.c_str(), responseMessage.size() + 1, 0);
+
+                            responseMessage.clear();
+                            responseMessage = "s: 200 OK you have a new message from ";
+                            responseMessage += currentLoggedinUserName;
+                            responseMessage += "\n";
+                            responseMessage += currentLoggedinUserName;
+                            responseMessage += ": ";
+                            responseMessage += AcutalMsgToSend;
+                            responseMessage += "\n";
+                            //cout << responseMessage << endl;
+                            send(targetUserSocketNumber, responseMessage.c_str(), responseMessage.size() + 1, 0);
                             break;
                         }
                     } // SEND Command for john ends
